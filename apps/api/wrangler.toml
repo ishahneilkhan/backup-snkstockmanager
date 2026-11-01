@@ -1,0 +1,15 @@
+name = "inventory-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "inventory-main"
+database_id = "REPLACE_WITH_YOUR_D1_ID"   # printed by: npx wrangler d1 create inventory-main
+migrations_dir = "migrations"
+
+[vars]
+PBKDF2_ITERATIONS = "100000"
+
+# Secret (never commit): npx wrangler secret put JWT_SECRET
+# For local work put it in apps/api/.dev.vars:  JWT_SECRET=some-long-random-text
