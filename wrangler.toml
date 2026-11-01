@@ -1,0 +1,22 @@
+# One Cloudflare Pages project: the web pages (apps/web/public) AND the API (functions/api, which runs
+# the code in apps/api/src). They share one address (xxx.pages.dev), so login cookies just work.
+name = "inventory"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "apps/web/public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "inventory-main"
+database_id = "REPLACE_WITH_YOUR_D1_ID"   # printed by: npx wrangler d1 create inventory-main
+migrations_dir = "apps/api/migrations"
+
+[vars]
+PBKDF2_ITERATIONS = "100000"
+# The numbers customers pay to (shown on the website). Not secret.
+PAYMENT_BKASH = ""
+PAYMENT_NAGAD = ""
+# Keep "0" until the real product works. "1" opens the buy form on the website.
+SALES_OPEN = "0"
+
+# Never put JWT_SECRET here. Production: Cloudflare dashboard -> your Pages project -> Settings ->
+# Variables and Secrets (type: Secret).  Local: a file named .dev.vars in this folder (git ignores it).

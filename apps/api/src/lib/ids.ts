@@ -23,3 +23,12 @@ export function tempPassword(length = 12): string {
   for (const b of rnd) out += PW_ALPHABET[b % PW_ALPHABET.length];
   return out;
 }
+
+// Short code a customer can read out or write down (no look-alike characters).
+const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+export function shortRef(length = 8): string {
+  const rnd = crypto.getRandomValues(new Uint8Array(length));
+  let out = '';
+  for (const b of rnd) out += REF_ALPHABET[b % REF_ALPHABET.length];
+  return out;
+}

@@ -19,7 +19,7 @@ type LoginRow = {
   shop_status: string | null; plan_until: number | null;
 };
 
-async function issueCookie(c: Context<AppEnv>, userId: string, tokenVersion: number): Promise<void> {
+export async function issueCookie(c: Context<AppEnv>, userId: string, tokenVersion: number): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const token = await sign({ sub: userId, tv: tokenVersion, iat: now, exp: now + SESSION_SECONDS }, c.env.JWT_SECRET, 'HS256');
   setCookie(c, COOKIE, token, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: SESSION_SECONDS });

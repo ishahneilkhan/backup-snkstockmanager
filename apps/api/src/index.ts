@@ -3,6 +3,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import type { AppEnv } from './types';
 import { admin } from './routes/admin';
 import { auth } from './routes/auth';
+import { pub } from './routes/public';
 
 const app = new Hono<AppEnv>();
 
@@ -19,6 +20,7 @@ app.use('/api/*', async (c, next) => {
 app.get('/api/health', (c) => c.json({ ok: true }));
 app.route('/api/auth', auth);
 app.route('/api/admin', admin);
+app.route('/api/public', pub);
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 app.onError((err, c) => {

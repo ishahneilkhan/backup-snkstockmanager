@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { AppEnv } from '../types';
 import { auditStmt } from '../lib/audit';
 import { newId, tempPassword } from '../lib/ids';
+import { sha256Hex } from '../lib/hash';
+import { businessTypes, defaultModules } from '../lib/modules';
 import { hashPassword, iterationsFrom } from '../lib/password';
 import { clearAuthCache, requireAuth, requireRole } from '../middleware';
 
@@ -10,10 +12,6 @@ export const admin = new Hono<AppEnv>();
 admin.use('*', requireAuth, requireRole('super_admin'));
 
 const DAY = 86_400_000;
-const businessTypes = ['pharmacy', 'grocery', 'restaurant'] as const;
-const defaultModules = (t: (typeof businessTypes)[number]): string[] =>
-  t === 'pharmacy' ? ['batches', 'expiry', 'pack_units'] : t === 'grocery' ? ['batches', 'weight', 'barcode'] : ['recipes', 'waste'];
-
 const createSchema = z.object({
   name: z.string().trim().min(2).max(100),
   business_type: z.enum(businessTypes),
@@ -117,4 +115,82 @@ admin.post('/shops/:id/reset-owner-password', async (c) => {
   ]);
   clearAuthCache();
   return c.json({ owner: { username: owner.username, temp_password: temp } });
+});
+
+// ---- plans (prices) ----
+admin.get('/plans', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT code, name, business_type, price, days, active, sort FROM plans ORDER BY sort, code').all();
+  return c.json({ plans: results });
+});
+
+const planPatch = z
+  .object({ name: z.string().trim().min(2).max(100), price_taka: z.number().min(0).max(10_000_000), active: z.boolean() })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, 'nothing to change');
+admin.patch('/plans/:code', async (c) => {
+  const parsed = planPatch.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'invalid' }, 400);
+  const b = parsed.data;
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (b.name !== undefined) { sets.push('name = ?'); vals.push(b.name); }
+  if (b.price_taka !== undefined) { sets.push('price = ?'); vals.push(Math.round(b.price_taka * 100)); }
+  if (b.active !== undefined) { sets.push('active = ?'); vals.push(b.active ? 1 : 0); }
+  const code = c.req.param('code');
+  const db = c.env.DB;
+  const [res] = await db.batch([
+    db.prepare(`UPDATE plans SET ${sets.join(', ')} WHERE code = ?`).bind(...vals, code),
+    auditStmt(db, { shopId: null, userId: c.get('user').id, action: 'plan_updated', detail: { code, ...b } }),
+  ]);
+  if (res.meta.changes === 0) return c.json({ error: 'not_found' }, 404);
+  return c.json({ ok: true });
+});
+
+// ---- purchase requests ----
+admin.get('/requests', async (c) => {
+  const status = ['pending', 'approved', 'rejected', 'claimed'].includes(c.req.query('status') ?? '') ? c.req.query('status')! : 'pending';
+  const { results } = await c.env.DB
+    .prepare(
+      `SELECT r.id, r.ref, r.status, r.plan_code, p.name AS plan_name, p.price AS plan_price, r.business_name, r.owner_name,
+              r.phone, r.payment_method, r.trx_id, r.amount, r.created_at, r.reviewed_at, r.claim_expires, r.claimed_at, r.note
+         FROM signup_requests r LEFT JOIN plans p ON p.code = r.plan_code
+        WHERE r.status = ? ORDER BY r.created_at DESC LIMIT 100`,
+    )
+    .bind(status)
+    .all();
+  return c.json({ requests: results });
+});
+
+// Approve = you checked the payment (e.g. the TrxID in your bKash app). The customer then gets a
+// one-time link to create their own account. The link is shown to you once, to send by WhatsApp/SMS.
+admin.post('/requests/:id/approve', async (c) => {
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  const r = await db.prepare('SELECT id, status, phone_norm FROM signup_requests WHERE id = ?').bind(id).first<{ id: string; status: string; phone_norm: string }>();
+  if (!r) return c.json({ error: 'not_found' }, 404);
+  if (r.status !== 'pending') return c.json({ error: 'not_pending' }, 409);
+  if (await db.prepare('SELECT 1 AS x FROM users WHERE username = ?').bind(r.phone_norm).first()) return c.json({ error: 'username_taken' }, 409);
+  const token = tempPassword(32);
+  const expires = Date.now() + 7 * DAY;
+  const [res] = await db.batch([
+    db.prepare("UPDATE signup_requests SET status = 'approved', claim_hash = ?, claim_expires = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+      .bind(await sha256Hex(token), expires, c.get('user').id, Date.now(), id),
+    auditStmt(db, { shopId: null, userId: c.get('user').id, action: 'request_approved', detail: { id } }),
+  ]);
+  if (res.meta.changes === 0) return c.json({ error: 'not_pending' }, 409);
+  return c.json({ claim_path: '/app/#claim=' + token, expires_at: expires, note: 'Send this link to the customer now. It is not stored and cannot be shown again.' });
+});
+
+admin.post('/requests/:id/reject', async (c) => {
+  const parsed = z.object({ reason: z.string().trim().max(300).optional() }).safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'invalid' }, 400);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  const [res] = await db.batch([
+    db.prepare("UPDATE signup_requests SET status = 'rejected', note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+      .bind(parsed.data.reason ?? null, c.get('user').id, Date.now(), id),
+    auditStmt(db, { shopId: null, userId: c.get('user').id, action: 'request_rejected', detail: { id, reason: parsed.data.reason } }),
+  ]);
+  if (res.meta.changes === 0) return c.json({ error: 'not_pending' }, 409);
+  return c.json({ ok: true });
 });

@@ -4,7 +4,8 @@ import sqlite3, pathlib, sys
 here = pathlib.Path(__file__).resolve().parent.parent
 db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
-db.executescript((here / "migrations" / "0001_init.sql").read_text())
+for f in sorted((here / "migrations").glob("*.sql")):
+    db.executescript(f.read_text())
 
 def ok(cond, msg):
     print(("PASS  " if cond else "FAIL  ") + msg)
@@ -55,4 +56,24 @@ ok(fails("INSERT INTO users (id,shop_id,name,username,password_hash,role,created
    "an owner without a shop is refused")
 db.execute("INSERT INTO users (id,shop_id,name,username,password_hash,role,created_at) VALUES ('sa',NULL,'Admin','admin@x.com','h','super_admin',1)")
 ok(True, "a super_admin without a shop is accepted")
+
+# ---- 0002: plans and purchase requests ----
+ok(db.execute("SELECT COUNT(*), SUM(price) FROM plans").fetchone() == (3, 0), "three starter plans exist, all with price 0 (you set the prices)")
+def req(i, ref, trx, status="pending"):
+    return db.execute("INSERT INTO signup_requests (id,ref,status,plan_code,business_name,owner_name,phone,phone_norm,payment_method,trx_id,amount,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (i, ref, status, "pharmacy_year", "Shop", "Owner", "01711111111", "01711111111", "bkash", trx, 500000, now))
+req("r1", "AAAA2222", "TRX123456")
+ok(fails("INSERT INTO signup_requests (id,ref,plan_code,business_name,owner_name,phone,phone_norm,payment_method,trx_id,amount,created_at) VALUES ('r2','BBBB2222','pharmacy_year','S','O','1','1','bkash','TRX123456',1,1)", contains="UNIQUE"),
+   "the same TrxID cannot be used for two live requests")
+db.execute("UPDATE signup_requests SET status='rejected' WHERE id='r1'")
+req("r3", "CCCC2222", "TRX123456")
+ok(True, "after a rejection the same TrxID can be sent again")
+ok(fails("INSERT INTO signup_requests (id,ref,plan_code,business_name,owner_name,phone,phone_norm,payment_method,trx_id,amount,created_at) VALUES ('r4','CCCC2222','pharmacy_year','S','O','1','1','bkash','OTHER12345',1,1)", contains="UNIQUE"),
+   "a request code (ref) is unique")
+ok(fails("INSERT INTO signup_requests (id,ref,status,plan_code,business_name,owner_name,phone,phone_norm,payment_method,trx_id,amount,created_at) VALUES ('r5','DDDD2222','weird','pharmacy_year','S','O','1','1','bkash','TRX999999',1,1)", contains="CHECK"),
+   "an unknown request status is refused")
+ok(fails("INSERT INTO signup_requests (id,ref,plan_code,business_name,owner_name,phone,phone_norm,payment_method,trx_id,amount,created_at) VALUES ('r6','EEEE2222','no_such_plan','S','O','1','1','bkash','TRX888888',1,1)", contains="FOREIGN KEY"),
+   "a request for a plan that does not exist is refused")
+db.execute("UPDATE signup_requests SET claim_hash='abc' WHERE id='r3'")
+ok(fails("UPDATE signup_requests SET claim_hash='abc' WHERE id='r1'", contains="UNIQUE"), "a claim link hash can belong to only one request")
 print("ALL MIGRATION CHECKS PASSED")

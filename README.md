@@ -4,7 +4,6 @@
 
 ## ফোল্ডার
 
-- `apps/api/`: Cloudflare Worker (ধাপ ১: লগইন, অ্যাডমিন, D1 স্কিমা)। চালানোর নিয়ম `apps/api/README.md`-এ
 - `index.html`: তিন প্রোটোটাইপের সূচি পাতা (ব্রাউজারে খুললেই চলে)
 - `schema.sql`: PostgreSQL স্কিমা (স্টক লেজার, FEFO ফাংশন, ভিউ)
 - `logic.sql`: কেনা, বিক্রি, স্টক সংশোধন ও পেমেন্টের ফাংশন (প্রতিটা একটা ট্রানজেকশন)
@@ -51,3 +50,40 @@
 ## সতর্কতা
 
 পাসওয়ার্ড, ডাটাবেস কানেকশন বা API কী কখনো কমিট করবেন না। এগুলো `.env`-এ রাখুন (`.gitignore`-এ আছে)।
+
+## চালানো ও ডিপ্লয় (Cloudflare Pages + GitHub)
+
+একটাই Cloudflare Pages প্রজেক্ট: ওয়েবসাইট আর API এক ঠিকানায় (`xxx.pages.dev`), তাই লগইন কুকি ঠিকমতো কাজ করে।
+
+- `apps/web/public/`: ওয়েবসাইট (`/` ল্যান্ডিং, `/demo/` ডেমো, `/app/` লগইন ও অ্যাডমিন প্যানেল)
+- `functions/api/[[route]].ts`: `/api/*` চালায় `apps/api/src`-এর কোড
+- `apps/api/migrations/`: D1 ডাটাবেসের স্কিমা (0001 মূল, 0002 ওয়েবসাইটের প্যাকেজ ও কেনার অনুরোধ)
+
+**প্রথমবার (কম্পিউটারে):**
+```
+npm install
+npx wrangler login
+npx wrangler d1 create inventory-main      # database_id টা wrangler.toml-এ বসান
+npm run db:local
+echo "JWT_SECRET=অনেক-লম্বা-এলোমেলো-লেখা" > .dev.vars      # কমিট হয় না
+ADMIN_PASSWORD='১২+ অক্ষরের পাসওয়ার্ড' node apps/api/scripts/make-super-admin-sql.mjs আপনার@ইমেইল "আপনার নাম" > admin.local.sql
+npx wrangler d1 execute inventory-main --local --file=admin.local.sql
+npm run dev
+```
+(লোকালে লগইন কুকি Chrome-এ চলে; Safari `http://localhost`-এ Secure কুকি নেয় না।)
+
+**Cloudflare-এ তোলা:** Workers & Pages, Create, Pages, Connect to Git, আপনার রিপোজিটরি। Build command ফাঁকা, Build output directory `apps/web/public`, Root directory ফাঁকা। তারপর:
+```
+npm run db:remote
+npx wrangler d1 execute inventory-main --remote --file=admin.local.sql
+```
+`JWT_SECRET` দিন Pages প্রজেক্টের Settings, Variables and Secrets-এ (type: Secret)। `wrangler.toml`-এ `PAYMENT_BKASH`, `PAYMENT_NAGAD` নম্বর বসান। `SALES_OPEN` "0" রাখুন, যতদিন আসল প্রোডাক্ট তৈরি না হয়।
+
+**এরপর নতুন ক্লায়েন্টের জন্য GitHub লাগে না।** অ্যাডমিন প্যানেল থেকেই খোলা যায়। GitHub শুধু কোড বদলালে।
+
+## ঠিক আছে কি না দেখা
+```
+npm run check:db     # স্কিমা, স্টক নিয়ম, প্যাকেজ ও অনুরোধ (শুধু Python লাগে)
+npm test             # পাসওয়ার্ড ও আইডি
+npm run typecheck
+```
