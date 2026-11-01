@@ -59,13 +59,29 @@ function toast(text) {
 }
 const field = (label, input) => h('label', null, label, input);
 
+const ICON = {
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  tag: '<path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/>',
+  box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+};
+function icon(name) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) s.setAttribute(k, v);
+  s.innerHTML = ICON[name]; // fixed icon strings above, never user text
+  return s;
+}
+function pageHead(title, sub, ic) {
+  return h('div', { class: 'head' }, h('div', { class: 'hico' }, icon(ic)), h('div', null, h('h2', { class: 'ht' }, title), h('p', { class: 'note' }, sub)));
+}
 function topbar(user) {
   return h('header', { class: 'bar' },
-    h('h1', null, 'ইনভেন্টরি'),
-    h('span', null, user.name + ' ',
-      h('button', { class: 'btn alt', type: 'button', onclick: () => showChangePassword(user, false) }, 'পাসওয়ার্ড বদলান'), ' ',
+    h('div', { class: 'brand' }, h('span', { class: 'logo' }, icon('box')), h('span', null, 'SNK Stock Manager')),
+    h('div', { class: 'who' }, h('span', { class: 'uname' }, user.name),
+      h('button', { class: 'btn alt', type: 'button', onclick: () => showChangePassword(user, false) }, 'পাসওয়ার্ড বদলান'),
       h('button', { class: 'btn alt', type: 'button', onclick: logout }, 'লগআউট')));
 }
+let adminTab = 'clients';
 async function logout() { await api('/api/auth/logout', 'POST'); showLogin(); }
 
 function route(user) {
@@ -108,10 +124,9 @@ function showChangePassword(user, forced) {
 }
 
 function showHome(user) {
-  show(topbar(user), h('main', null, h('div', { class: 'card' },
-    h('h2', null, 'স্বাগতম, ' + user.name),
-    h('p', null, 'লগইন কাজ করছে। পণ্য, মাল কেনা আর বিক্রির স্ক্রিন পরের ধাপে আসছে.'),
-    h('p', { class: 'note' }, 'ভূমিকা: ' + (user.role === 'owner' ? 'মালিক' : 'সেলসম্যান')))));
+  show(topbar(user), h('main', null,
+    pageHead('স্বাগতম, ' + user.name, 'ভূমিকা: ' + (user.role === 'owner' ? 'মালিক' : 'সেলসম্যান'), 'box'),
+    h('div', { class: 'card' }, h('p', null, 'লগইন কাজ করছে। পণ্য, মাল কেনা আর বিক্রির স্ক্রিন পরের ধাপে আসছে।'))));
 }
 
 async function showAdmin(user, notice) {
@@ -211,14 +226,24 @@ async function showAdmin(user, notice) {
     h('button', { class: 'btn alt', type: 'button', onclick: () => navigator.clipboard.writeText(notice.password).then(() => toast('কপি হয়েছে')) }, 'কপি'),
     h('p', { class: 'note' }, 'এটা এখনই মালিককে দিন। এই পাসওয়ার্ড সংরক্ষিত থাকে না, আর দ্বিতীয়বার দেখানো যাবে না।')) : null;
 
-  show(topbar(user), h('main', null, box,
-    reqCard,
-    h('div', { class: 'card' }, h('h2', null, 'নতুন ক্লায়েন্ট (হাতে খোলা)'), create),
-    h('div', { class: 'card' }, h('h2', null, 'ক্লায়েন্ট তালিকা (' + num(shops.length) + ')'),
-      shops.length ? h('div', { class: 'tw' }, h('table', null,
-        h('thead', null, h('tr', null, ['দোকান', 'ধরন', 'অবস্থা', 'মেয়াদ', 'ইউজার', 'শেষ লগইন', 'বিল (৩০ দিন)', ''].map((t) => h('th', null, t)))),
-        h('tbody', null, rows))) : h('p', { class: 'note' }, 'এখনো কোনো ক্লায়েন্ট নেই।')),
-    planCard));
+  const active = shops.filter((x) => x.status === 'active' && !(x.plan_until !== null && x.plan_until < Date.now())).length;
+  const stat = (label, value, tone) => h('div', { class: 'stat ' + (tone || '') }, h('span', { class: 'sl' }, label), h('b', null, value));
+  const stats = h('div', { class: 'stats' }, stat('মোট ক্লায়েন্ট', num(shops.length)), stat('চালু', num(active), 'ok'),
+    stat('বন্ধ বা মেয়াদ শেষ', num(shops.length - active), 'bad'), stat('যাচাই বাকি', num(requests.length), 'warn'));
+  const listCard = h('div', { class: 'card' }, h('h2', null, 'ক্লায়েন্ট তালিকা (' + num(shops.length) + ')'),
+    shops.length ? h('div', { class: 'tw' }, h('table', null,
+      h('thead', null, h('tr', null, ['দোকান', 'ধরন', 'অবস্থা', 'মেয়াদ', 'ইউজার', 'শেষ লগইন', 'বিল (৩০ দিন)', ''].map((t) => h('th', null, t)))),
+      h('tbody', null, rows))) : h('p', { class: 'note' }, 'এখনো কোনো ক্লায়েন্ট নেই।'));
+  const TABS = [
+    ['clients', 'ক্লায়েন্ট', 'users', 'ক্লায়েন্ট', 'দোকান খোলা, বন্ধ করা আর মেয়াদ দেখা', [stats, h('div', { class: 'card' }, h('h2', null, 'নতুন ক্লায়েন্ট (হাতে খোলা)'), create), listCard]],
+    ['requests', 'অনুরোধ', 'inbox', 'কেনার অনুরোধ', 'পেমেন্ট মিলিয়ে দেখে অনুমোদন দিন', [reqCard]],
+    ['plans', 'দাম', 'tag', 'প্যাকেজ ও দাম', 'ওয়েবসাইটে যে দাম দেখায়', [planCard]],
+  ];
+  const cur = TABS.find((t) => t[0] === adminTab) || TABS[0];
+  const rail = h('nav', { class: 'rail', 'aria-label': 'মেনু' }, TABS.map((t) => h('button', {
+    class: t[0] === cur[0] ? 'on' : '', type: 'button', title: t[3], onclick: () => { adminTab = t[0]; showAdmin(user); } },
+    icon(t[2]), h('span', { class: 'rl' }, t[1]), t[0] === 'requests' && requests.length ? h('span', { class: 'badge' }, num(requests.length)) : null)));
+  show(topbar(user), h('div', { class: 'shell' }, rail, h('main', null, box, pageHead(cur[3], cur[4], cur[2]), ...cur[5])));
 }
 
 function linkBox(n) {
