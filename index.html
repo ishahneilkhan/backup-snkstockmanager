@@ -3,42 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ইনভেন্টরি প্রোটোটাইপ</title>
-<style>
-:root{--bg:#f3f6f5;--card:#fff;--ink:#14282a;--mute:#5d7274;--line:#dbe4e2;--brand:#0f6b63;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1a1b;--card:#162526;--ink:#e6f0ee;--mute:#92aaa8;--line:#274142;--brand:#3fb5a8;color-scheme:dark}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Hind Siliguri","Noto Sans Bengali","Kalpurush",system-ui,sans-serif}
-main{max-width:760px;margin:0 auto;padding:28px 16px}
-h1{font-size:26px;margin:0 0 6px}
-p{margin:0 0 14px;color:var(--mute)}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:20px 0}
-a.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;color:inherit;text-decoration:none}
-a.card:hover,a.card:focus-visible{border-color:var(--brand);outline:none}
-a.card b{display:block;font-size:19px;color:var(--brand);margin-bottom:4px}
-a.card span{color:var(--mute);font-size:15px}
-.note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:15px}
-.note li{margin:4px 0}
-code{background:var(--bg);padding:1px 6px;border-radius:6px}
-</style>
+<title>SNK Stock Manager: ফার্মেসি, গ্রোসারি ও রেস্টুরেন্টের স্টক ও হিসাব</title>
+<meta name="description" content="ফার্মেসি, গ্রোসারি ও রেস্টুরেন্টের স্টক, বিক্রি আর বাকির হিসাব এক জায়গায়।">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/site.css">
 </head>
-<body>
+<body class="site">
+<header class="bar"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg></span><span>SNK Stock Manager</span></div><a class="btn alt" href="/app/">লগইন</a></header>
 <main>
-<h1>ইনভেন্টরি ও হিসাব সফটওয়্যার</h1>
-<p>তিনটা ব্যবসার প্রোটোটাইপ। নিচের যেকোনো একটা খুলে চালিয়ে দেখুন।</p>
-<div class="grid">
- <a class="card" href="prototypes/pharmacy-inventory.html"><b>ফার্মেসি</b><span>ব্যাচ, মেয়াদ, FEFO, স্ট্রিপ ভেঙে পিস, রসিদ, রোল</span></a>
- <a class="card" href="prototypes/grocery-inventory.html"><b>গ্রোসারি</b><span>কেজি ও গ্রামে বিক্রি, মেয়াদ, বাকির খাতা</span></a>
- <a class="card" href="prototypes/restaurant-inventory.html"><b>রেস্টুরেন্ট</b><span>রেসিপি, উপকরণ নিজে থেকে কমা, অপচয়, কিচেন স্লিপ</span></a>
-</div>
-<div class="note">
- <ul>
-  <li>সব ডাটা নমুনা। যা এন্ট্রি করবেন তা শুধু আপনার ব্রাউজারে থাকে, সার্ভারে যায় না।</li>
-  <li>ফার্মেসিতে সেলসম্যান মোড থেকে মালিক মোডে ফিরতে PIN: <code>১২৩৪</code></li>
-  <li>প্রতিটা প্রোটোটাইপের নিচে "নমুনা ডাটা রিসেট" বোতাম আছে (রিপোর্ট ট্যাবে)।</li>
-  <li>ডাটাবেস, বিক্রি ও অফলাইন সিংকের নকশা <code>schema.sql</code>, <code>logic.sql</code>, <code>sync.sql</code> ও <code>docs/</code> ফোল্ডারে।</li>
- </ul>
-</div>
+  <section class="hero card">
+    <div>
+      <h2>দোকানের স্টক আর হিসাব, এক জায়গায়</h2>
+      <p>ফার্মেসি, গ্রোসারি ও রেস্টুরেন্টের জন্য। মাল কেনা, বিক্রি, বাকির খাতা, মেয়াদের হিসাব আর রসিদ প্রিন্ট, কম্পিউটার বা ফোনের ব্রাউজারেই।</p>
+      <p><a class="btn" href="#demo">ডেমো দেখুন</a> <a class="btn alt" href="#pricing">দাম ও কেনা</a></p>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="stat"><span class="sl">মোট পণ্য</span><b>১২৮</b></div>
+      <div class="stat warn"><span class="sl">স্টক কম</span><b>২৪</b></div>
+      <div class="stat bad"><span class="sl">মেয়াদ শেষ হতে যাচ্ছে</span><b>৮</b></div>
+      <small>নমুনা চিত্র</small>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>কী কী থাকছে</h2>
+    <ul class="feat">
+      <li>ব্যাচ ও মেয়াদ: যে মালের মেয়াদ আগে শেষ হবে সেটা আগে বিক্রি হয়, মেয়াদোত্তীর্ণ মাল বিক্রি আটকায়</li>
+      <li>স্ট্রিপ ভেঙে পিসে, কেজি ভেঙে গ্রামে বিক্রি</li>
+      <li>কাস্টমারের বাকি আর সাপ্লায়ারের পাওনার খাতা</li>
+      <li>যেকোনো প্রিন্টারে রসিদ (থার্মাল বা A4), বাংলা সহ</li>
+      <li>মালিক ও সেলসম্যানের আলাদা অ্যাক্সেস</li>
+      <li>রেস্টুরেন্টে রেসিপি: খাবার বিক্রি হলে উপকরণ নিজে থেকে কমে</li>
+      <li class="soon">ইন্টারনেট চলে গেলেও বিক্রি (শীঘ্রই)</li>
+      <li class="soon">মোবাইল অ্যাপ (শীঘ্রই)</li>
+    </ul>
+  </section>
+
+  <section class="card" id="demo">
+    <h2>নিজে চালিয়ে দেখুন</h2>
+    <p class="note">এগুলো ডেমো। নমুনা ডাটা দিয়ে সাজানো, আপনি যা লিখবেন তা শুধু আপনার ব্রাউজারে থাকে। আসল সফটওয়্যারের চেহারা কিছুটা আলাদা হতে পারে।</p>
+    <div class="grid3">
+      <a class="demo" href="/demo/pharmacy.html"><b>ফার্মেসি</b><span>ব্যাচ, মেয়াদ, স্ট্রিপ ও পিস, রসিদ</span></a>
+      <a class="demo" href="/demo/grocery.html"><b>গ্রোসারি</b><span>কেজি ও গ্রামে বিক্রি, বাকির খাতা</span></a>
+      <a class="demo" href="/demo/restaurant.html"><b>রেস্টুরেন্ট</b><span>রেসিপি, অপচয়, কিচেন স্লিপ</span></a>
+    </div>
+  </section>
+
+  <section class="card" id="pricing">
+    <h2>দাম (বছরে)</h2>
+    <div id="plans" class="grid3"><p class="note">লোড হচ্ছে…</p></div>
+  </section>
+
+  <section class="card" id="buy" hidden>
+    <h2>কিনুন</h2>
+    <ol class="steps">
+      <li>প্যাকেজ বেছে নিন, তারপর নিচের নম্বরে টাকা পাঠান।</li>
+      <li>ফর্মে আপনার তথ্য আর ট্রানজেকশন আইডি (TrxID) লিখুন।</li>
+      <li>আমরা পেমেন্ট মিলিয়ে দেখে আপনার ফোনে একটা লিংক পাঠাব। সেই লিংকে নিজের পাসওয়ার্ড দিয়ে অ্যাকাউন্ট খুলবেন।</li>
+    </ol>
+    <div id="payinfo" class="secret"></div>
+    <form id="buyForm">
+      <div class="row">
+        <label>প্যাকেজ<select id="f_plan" required></select></label>
+        <label>দোকানের নাম<input id="f_biz" required minlength="2" maxlength="100"></label>
+        <label>মালিকের নাম<input id="f_owner" required minlength="2" maxlength="100"></label>
+      </div>
+      <div class="row">
+        <label>ফোন নম্বর (এটাই আপনার ইউজারনেম হবে)<input id="f_phone" type="tel" required placeholder="01XXXXXXXXX" autocomplete="tel"></label>
+        <label>কীভাবে পাঠিয়েছেন<select id="f_method"><option value="bkash">বিকাশ</option><option value="nagad">নগদ</option><option value="bank">ব্যাংক</option></select></label>
+        <label>ট্রানজেকশন আইডি (TrxID)<input id="f_trx" required minlength="6" maxlength="40" autocomplete="off"></label>
+        <label>কত টাকা পাঠিয়েছেন<input id="f_amount" type="number" min="1" required></label>
+      </div>
+      <input id="f_web" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn" type="submit" id="f_btn">অনুরোধ পাঠান</button>
+      <p class="err" id="f_err"></p>
+    </form>
+    <div id="buyDone" class="secret" hidden></div>
+  </section>
+
+  <section class="card" id="closed" hidden>
+    <h2>শীঘ্রই চালু হচ্ছে</h2>
+    <p>এখন শুধু ডেমো দেখা যাচ্ছে। কেনা চালু হলে এখানেই জানানো হবে।</p>
+  </section>
+
+  <section class="card">
+    <h2>অনুরোধের অবস্থা দেখুন</h2>
+    <form id="statForm" class="row">
+      <label>অনুরোধের কোড<input id="s_ref" required maxlength="8" autocomplete="off"></label>
+      <label>ফোন নম্বর<input id="s_phone" type="tel" required></label>
+      <button class="btn" type="submit">দেখুন</button>
+    </form>
+    <p id="s_out" class="note"></p>
+  </section>
 </main>
+<footer class="foot">© SNK Stock Manager</footer>
+<script src="/site.js" defer></script>
 </body>
 </html>
